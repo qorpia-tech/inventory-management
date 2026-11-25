@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CheckIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import { advanceFor, formatSoles, hiringSteps, implementationWithInvoicing, PRICING } from "@/demo/pricing";
+import { advanceFor, formatSoles, hiringSteps, implementationWithInvoicing, PRICING, upgradeDifference } from "@/demo/pricing";
 import { Card, PageHeader, SectionTitle } from "../components/primitives";
 import { PlanCalculator } from "./plan-calculator";
 import { PlanCards } from "./plan-cards";
@@ -27,9 +27,9 @@ function Row({ title, price, children }: { title: string; price: ReactNode; chil
 
 /** Public price sheet (part A). Every amount and total comes from the pricing data file. */
 export function PlansScreen() {
-  const { addons, implementation, website, advance, conditions } = PRICING;
+  const { plans, addons, implementation, website, advance, conditions } = PRICING;
   const advanceExamples = [
-    { label: "Implementación base", split: advanceFor(implementation.base.from) },
+    ...plans.map((plan) => ({ label: `Implementación ${plan.name}`, split: advanceFor(plan.implementation.from) })),
     { label: "Solo web comercial", split: advanceFor(website.creation.from) },
   ];
 
@@ -75,18 +75,25 @@ export function PlansScreen() {
       <section aria-labelledby="implementation">
         <SectionTitle id="implementation">Implementación: pago único para empezar</SectionTitle>
         <ul className="grid gap-3 md:grid-cols-2">
-          <Row title={implementation.base.name} price={<Price prefix="desde" amount={implementation.base.from} />}>
-            {implementation.base.includes}
-          </Row>
-          <Card as="li" className="flex flex-col gap-2">
+          {plans.map((plan) => (
+            <Row key={plan.id} title={plan.name} price={<Price prefix="desde" amount={plan.implementation.from} />}>
+              {plan.implementation.includes}
+            </Row>
+          ))}
+          <Card as="li" className="flex flex-col gap-2 md:col-span-2">
             <p className="title-3 text-ink-900">{implementation.invoicing.name}</p>
-            <Price prefix="+" amount={implementation.invoicing.surcharge} suffix="sobre la base" />
-            <p className="body-5 text-ink-900">desde {formatSoles(implementationWithInvoicing())} en total</p>
+            <Price prefix="+" amount={implementation.invoicing.surcharge} suffix="sobre la implementación" />
+            <p className="body-5 text-ink-900">
+              {plans.map((plan) => `desde ${formatSoles(implementationWithInvoicing(plan))} con ${plan.name}`).join(" o ")} en total
+            </p>
             <p className="body-6 text-ink-700">
               {implementation.invoicing.includes} ({formatSoles(implementation.invoicing.providerMonthly)} al mes, pagados a {implementation.invoicing.providerName}).
             </p>
           </Card>
         </ul>
+        <p className="mt-2 body-6 text-ink-700">
+          {implementation.upgradeNote} Hoy: {formatSoles(upgradeDifference())}.
+        </p>
       </section>
 
       <section aria-labelledby="addons">

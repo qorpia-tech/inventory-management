@@ -8,6 +8,8 @@ export interface Plan {
   monthly: number;
   includes: string;
   users: number;
+  /** One-time implementation that every client of this plan pays to start. */
+  implementation: { from: number; includes: string };
   recommended?: boolean;
 }
 
@@ -18,7 +20,8 @@ export interface PricingData {
     extraUser: { name: string; monthlyPerUser: number; condition: string };
   };
   implementation: {
-    base: { name: string; from: number; includes: string };
+    /** How a client moves from Inventario to Inventario + Eventos. */
+    upgradeNote: string;
     invoicing: { name: string; surcharge: number; includes: string; providerMonthly: number; providerName: string };
   };
   website: {
@@ -29,7 +32,6 @@ export interface PricingData {
   annualFreeMonths: number;
   /** New clients on the monthly plan: this month of the monthly fee is free, once per RUC. */
   welcomeFreeMonth: number;
-  pilotDiscount: number;
   conditions: { title: string; text: string }[];
   taxNote: string;
 }
@@ -42,6 +44,11 @@ export const PRICING: PricingData = {
       monthly: 180,
       includes: "Catálogo, existencias por almacén, movimientos e historial.",
       users: 5,
+      implementation: {
+        from: 1300,
+        includes:
+          "Carga de hasta 300 artículos en un almacén con sus saldos iniciales, configuración de usuarios y capacitación del equipo. Un catálogo más grande o más almacenes se cotiza.",
+      },
     },
     {
       id: "inventario-eventos",
@@ -50,6 +57,11 @@ export const PRICING: PricingData = {
       includes:
         "Todo Inventario, más disponibilidad por horario, reservas, despacho y devolución desde el celular, lavado y alertas de atraso.",
       users: 5,
+      implementation: {
+        from: 1800,
+        includes:
+          "Todo lo de Inventario, más la configuración de eventos (horarios, lavado y agenda), la capacitación del almacén con el celular y el acompañamiento del primer evento.",
+      },
       recommended: true,
     },
   ],
@@ -66,12 +78,7 @@ export const PRICING: PricingData = {
     },
   },
   implementation: {
-    base: {
-      name: "Base",
-      from: 1800,
-      includes:
-        "Carga de hasta 300 artículos en un almacén, configuración de usuarios, capacitación del equipo y acompañamiento del primer evento. Un catálogo más grande o más almacenes se cotiza.",
-    },
+    upgradeNote: "Si empiezas con Inventario y luego sumas Eventos, pagas solo la diferencia de implementación.",
     invoicing: {
       name: "Con facturación electrónica (Nubefact)",
       surcharge: 2500,
@@ -107,17 +114,15 @@ export const PRICING: PricingData = {
   },
   annualFreeMonths: 2,
   welcomeFreeMonth: 4,
-  pilotDiscount: 0.3,
   conditions: [
     { title: "Pago anual", text: "se paga el año por adelantado, con 2 meses gratis en todas las mensualidades (planes, adicionales y mantenimiento de la web)." },
     {
       title: "Bienvenida",
-      text: "si es tu primera vez con QorStock y pagas mes a mes, el mes 4 va gratis si estás al día con los tres primeros. Una sola vez por RUC.",
+      text: "si eres cliente nuevo y pagas mes a mes, quédate con nosotros los 3 primeros meses y el 4.º es gratis. Una sola vez por RUC.",
     },
-    { title: "Piloto", text: "30% de descuento en la implementación base. No aplica al recargo de facturación." },
     {
       title: "Descuentos",
-      text: "el piloto se aplica a la implementación base. La bienvenida y el pago anual se aplican a las mensualidades y no se combinan: si pasas a anual antes del mes 4, la bienvenida no aplica.",
+      text: "la bienvenida y el pago anual se aplican a las mensualidades y no se combinan: si pasas a anual antes del mes 4, la bienvenida no aplica.",
     },
     { title: "Facturación", text: "funciona junto con tu sistema de facturación actual, o conéctalo con Nubefact." },
   ],
@@ -147,13 +152,15 @@ export function annualEquivalent(monthly: number, data: PricingData = PRICING): 
   return Math.round(annualPrice(monthly, data) / 12);
 }
 
-export function implementationWithInvoicing(data: PricingData = PRICING): number {
-  return data.implementation.base.from + data.implementation.invoicing.surcharge;
+export function implementationWithInvoicing(plan: Plan, data: PricingData = PRICING): number {
+  return plan.implementation.from + data.implementation.invoicing.surcharge;
 }
 
-/** Pilot discount applies to the base implementation only. */
-export function pilotImplementation(data: PricingData = PRICING): number {
-  return Math.round(data.implementation.base.from * (1 - data.pilotDiscount));
+/** What a client on Inventario pays to add Eventos: the difference between both implementations. */
+export function upgradeDifference(data: PricingData = PRICING): number {
+  const inventory = data.plans.find((p) => p.id === "inventario")!;
+  const events = data.plans.find((p) => p.id === "inventario-eventos")!;
+  return events.implementation.from - inventory.implementation.from;
 }
 
 export interface AdvanceSplit {
@@ -176,9 +183,9 @@ export interface StartCost {
   total: number;
 }
 
-/** Every plan starts with the one-time base implementation; the fee runs from go-live. */
+/** Every plan starts with its one-time implementation; the fee runs from go-live. */
 export function startCost(plan: Plan, billing: Billing = "monthly", data: PricingData = PRICING): StartCost {
-  const implementation = data.implementation.base.from;
+  const implementation = plan.implementation.from;
   const firstPayment = billing === "annual" ? annualPrice(plan.monthly, data) : plan.monthly;
   return { implementation, firstPayment, total: implementation + firstPayment };
 }
@@ -190,11 +197,10 @@ export interface HiringStep {
 
 /** «Cómo se contrata»: the order in which a plan is paid for. */
 export function hiringSteps(data: PricingData = PRICING): HiringStep[] {
-  const advance = advanceFor(data.implementation.base.from, data).advance;
   return [
     {
       title: "Firma y anticipo",
-      text: `Al firmar pagas el anticipo: 30% de la implementación (desde ${formatSoles(advance)}).`,
+      text: `Al firmar pagas el anticipo: ${Math.round(data.advance.rate * 100)}% de la implementación, con un mínimo de ${formatSoles(data.advance.minimum)}.`,
     },
     {
       title: "Implementación",
@@ -219,7 +225,6 @@ export interface QuoteSelection {
   invoicing: boolean;
   website: boolean;
   billing: Billing;
-  pilot: boolean;
   /** First time with QorStock: the monthly plan gets the welcome month. */
   newClient: boolean;
 }
@@ -247,7 +252,7 @@ export interface Quote {
   /** Paid by the client to the invoicing provider; not part of the totals. */
   providerMonthly: number;
   /** The selection after the rules: staff needs Inventario + Eventos; the website alone takes no plan options. */
-  applied: { staff: boolean; invoicing: boolean; website: boolean; pilot: boolean; extraUsers: number; welcome: boolean };
+  applied: { staff: boolean; invoicing: boolean; website: boolean; extraUsers: number; welcome: boolean };
 }
 
 /** Prices a selection with the public rules of part A. */
@@ -257,7 +262,6 @@ export function quote(selection: QuoteSelection, data: PricingData = PRICING): Q
     staff: plan?.id === "inventario-eventos" && selection.staff,
     invoicing: Boolean(plan) && selection.invoicing,
     website: !plan || selection.website,
-    pilot: Boolean(plan) && selection.pilot,
     extraUsers: plan ? Math.max(0, Math.floor(selection.users) - plan.users) : 0,
     welcome: Boolean(plan) && selection.newClient && selection.billing === "monthly",
   };
@@ -265,11 +269,7 @@ export function quote(selection: QuoteSelection, data: PricingData = PRICING): Q
   const oneTime: QuoteLine[] = [];
   const monthly: QuoteLine[] = [];
   if (plan) {
-    oneTime.push(
-      applied.pilot
-        ? { label: "Implementación base, con descuento del piloto", amount: pilotImplementation(data) }
-        : { label: "Implementación base", amount: data.implementation.base.from },
-    );
+    oneTime.push({ label: `Implementación ${plan.name}`, amount: plan.implementation.from });
     if (applied.invoicing) oneTime.push({ label: "Facturación electrónica (Nubefact)", amount: data.implementation.invoicing.surcharge });
     monthly.push({ label: `Plan ${plan.name}`, amount: plan.monthly });
     if (applied.staff) monthly.push({ label: data.addons.staff.name, amount: data.addons.staff.monthly });

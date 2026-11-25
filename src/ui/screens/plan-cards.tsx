@@ -55,7 +55,7 @@ export function PlanCards() {
                 <p className="flex items-start gap-2 rounded-xl bg-apricot-100 px-3 py-2 body-6 text-apricot-800">
                   <GiftIcon size={18} weight="duotone" className="mt-0.5 shrink-0" aria-hidden />
                   <span>
-                    Bienvenida: si es tu primera vez, el mes {PRICING.welcomeFreeMonth} va gratis al estar al día con los tres primeros.
+                    Quédate con nosotros los {PRICING.welcomeFreeMonth - 1} primeros meses y el {PRICING.welcomeFreeMonth}.º es gratis. Para clientes nuevos, una vez por RUC.
                   </span>
                 </p>
               )}

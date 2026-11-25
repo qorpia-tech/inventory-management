@@ -2,8 +2,8 @@
 
 import { useId, useState, type ReactNode } from "react";
 import { CheckIcon } from "@phosphor-icons/react";
-import { formatSoles, PRICING, quote, type Billing, type PlanChoice, type QuoteLine, type QuoteSelection } from "@/demo/pricing";
-import { Segmented, Stepper } from "../components/fields";
+import { formatSoles, PRICING, quote, type PlanChoice, type QuoteLine, type QuoteSelection } from "@/demo/pricing";
+import { Stepper } from "../components/fields";
 import { cx } from "../components/primitives";
 
 const INITIAL: QuoteSelection = {
@@ -13,7 +13,6 @@ const INITIAL: QuoteSelection = {
   invoicing: false,
   website: false,
   billing: "monthly",
-  pilot: false,
   newClient: true,
 };
 
@@ -171,41 +170,6 @@ export function PlanCalculator() {
             </p>
           </fieldset>
         )}
-
-        <Segmented<Billing>
-          label="Forma de pago"
-          options={[
-            { value: "monthly", label: "Mensual" },
-            { value: "annual", label: "Anual: 2 meses gratis" },
-          ]}
-          value={selection.billing}
-          onChange={(value) => set("billing", value)}
-        />
-
-        {!webOnly && (
-          <Option
-            title="Primera vez con QorStock"
-            price={`mes ${PRICING.welcomeFreeMonth} gratis`}
-            hint={
-              selection.billing === "annual"
-                ? "La bienvenida es para el pago mensual; el anual ya trae 2 meses gratis."
-                : `Pagas mes a mes: el mes ${PRICING.welcomeFreeMonth} no se cobra si estás al día con los tres primeros. Una sola vez por RUC.`
-            }
-            checked={result.applied.welcome}
-            disabled={selection.billing === "annual"}
-            onChange={(checked) => set("newClient", checked)}
-          />
-        )}
-
-        {!webOnly && (
-          <Option
-            title="Cliente piloto"
-            price="−30% en la implementación base"
-            hint="No aplica al recargo de facturación."
-            checked={selection.pilot}
-            onChange={(checked) => set("pilot", checked)}
-          />
-        )}
       </div>
 
       <div className="flex flex-col gap-4 rounded-2xl p-4 text-white md:sticky md:top-4" style={{ background: "var(--gradient-petroleum)" }}>
@@ -223,7 +187,11 @@ export function PlanCalculator() {
             >
               <span className="caption-4 text-ivory-200">Mes a mes</span>
               <span className="body-4 tabular-nums text-white">{formatSoles(result.monthlyTotal)} al mes</span>
-              {!webOnly && <span className="caption-4 text-gold-300">Nuevo: mes {PRICING.welcomeFreeMonth} gratis</span>}
+              {!webOnly && (
+                <span className="caption-4 text-gold-300">
+                  Quédate {PRICING.welcomeFreeMonth - 1} meses y el {PRICING.welcomeFreeMonth}.º es gratis
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -252,7 +220,10 @@ export function PlanCalculator() {
             <dd className="body-4 tabular-nums">{formatSoles(result.advance.balance)}</dd>
             {result.applied.welcome && (
               <>
-                <dt className="body-6 text-ivory-200">Bienvenida: mes {PRICING.welcomeFreeMonth} gratis</dt>
+                <dt className="body-6 text-ivory-200">
+                  Mes {PRICING.welcomeFreeMonth} gratis
+                  <span className="block caption-4 text-ivory-200">Por quedarte los {PRICING.welcomeFreeMonth - 1} primeros meses</span>
+                </dt>
                 <dd className="body-4 tabular-nums text-gold-300">−{formatSoles(result.welcome)}</dd>
               </>
             )}
