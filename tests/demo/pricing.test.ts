@@ -109,6 +109,16 @@ describe("QorStock public pricing (part A)", () => {
       expect([webOnly.welcome, webOnly.firstYear, webOnly.applied.welcome]).toEqual([0, 1670, false]);
     });
 
+    it("reads the cost per month: the annual comparison and the first year spread over twelve months", () => {
+      const inventory = quote({ ...base, plan: "inventario", newClient: true });
+      expect([inventory.monthlyTotal, inventory.annual.total, inventory.annual.perMonth]).toEqual([180, 1800, 150]);
+      expect([inventory.firstYear, inventory.firstYearPerMonth]).toEqual([3780, 315]);
+      expect(quote({ ...base, plan: "inventario" }).firstYearPerMonth).toBe(330);
+      expect(quote({ ...base, billing: "annual" }).firstYearPerMonth).toBe(450);
+      const full = quote({ ...base, newClient: true, staff: true, users: 7, invoicing: true, website: true, pilot: true });
+      expect([full.firstYear, full.firstYearPerMonth]).toEqual([10870, 906]);
+    });
+
     it("does not add staff to the inventory-only plan", () => {
       const q = quote({ ...base, plan: "inventario", staff: true });
       expect(q.monthlyTotal).toBe(180);

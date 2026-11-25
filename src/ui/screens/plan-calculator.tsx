@@ -210,27 +210,67 @@ export function PlanCalculator() {
 
       <div className="flex flex-col gap-4 rounded-2xl p-4 text-white md:sticky md:top-4" style={{ background: "var(--gradient-petroleum)" }}>
         <p className="caption-4 uppercase tracking-wide text-gold-300">Cuánto te sale</p>
-        <dl className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-2" aria-live="polite">
-          <dt className="body-6 text-ivory-200">Al firmar (anticipo)</dt>
-          <dd className="body-4 tabular-nums">
-            {formatSoles(result.advance.advance)}
-            {result.advance.isMinimum && <span className="caption-4 text-ivory-200"> mínimo</span>}
-          </dd>
-          <dt className="body-6 text-ivory-200">A la entrega (saldo)</dt>
-          <dd className="body-4 tabular-nums">{formatSoles(result.advance.balance)}</dd>
-          <dt className="body-6 text-ivory-200">{selection.billing === "annual" ? "Pago anual" : "Mensualidad"}</dt>
-          <dd className="body-4 tabular-nums">
-            {selection.billing === "annual" ? `${formatSoles(result.subscriptions)} al año` : `${formatSoles(result.monthlyTotal)} al mes`}
-          </dd>
-          {result.applied.welcome && (
-            <>
-              <dt className="body-6 text-ivory-200">Bienvenida: mes {PRICING.welcomeFreeMonth} gratis</dt>
-              <dd className="body-4 tabular-nums text-gold-300">−{formatSoles(result.welcome)}</dd>
-            </>
-          )}
-          <dt className="border-t border-white/15 pt-2 body-4 text-white">Primer año</dt>
-          <dd className="border-t border-white/15 pt-2 number-md tabular-nums text-gold-300">{formatSoles(result.firstYear)}</dd>
-        </dl>
+        <div className="flex flex-col gap-4" aria-live="polite">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              aria-pressed={selection.billing === "monthly"}
+              onClick={() => set("billing", "monthly")}
+              className={cx(
+                "pressable flex min-h-11 flex-col items-start gap-0.5 rounded-xl p-3 text-left",
+                selection.billing === "monthly" ? "bg-white/15 ring-2 ring-gold-300" : "bg-white/5",
+              )}
+            >
+              <span className="caption-4 text-ivory-200">Mes a mes</span>
+              <span className="body-4 tabular-nums text-white">{formatSoles(result.monthlyTotal)} al mes</span>
+              {!webOnly && <span className="caption-4 text-gold-300">Nuevo: mes {PRICING.welcomeFreeMonth} gratis</span>}
+            </button>
+            <button
+              type="button"
+              aria-pressed={selection.billing === "annual"}
+              onClick={() => set("billing", "annual")}
+              className={cx(
+                "pressable flex min-h-11 flex-col items-start gap-0.5 rounded-xl p-3 text-left",
+                selection.billing === "annual" ? "bg-white/15 ring-2 ring-gold-300" : "bg-white/5",
+              )}
+            >
+              <span className="caption-4 text-ivory-200">Pagando el año</span>
+              <span className="body-4 tabular-nums text-white">{formatSoles(result.annual.perMonth)} al mes</span>
+              <span className="caption-4 text-gold-300">
+                {formatSoles(result.annual.total)} al año · {PRICING.annualFreeMonths} meses gratis
+              </span>
+            </button>
+          </div>
+
+          <dl className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-2">
+            <dt className="body-6 text-ivory-200">Al firmar (anticipo)</dt>
+            <dd className="body-4 tabular-nums">
+              {formatSoles(result.advance.advance)}
+              {result.advance.isMinimum && <span className="caption-4 text-ivory-200"> mínimo</span>}
+            </dd>
+            <dt className="body-6 text-ivory-200">A la entrega (saldo)</dt>
+            <dd className="body-4 tabular-nums">{formatSoles(result.advance.balance)}</dd>
+            {result.applied.welcome && (
+              <>
+                <dt className="body-6 text-ivory-200">Bienvenida: mes {PRICING.welcomeFreeMonth} gratis</dt>
+                <dd className="body-4 tabular-nums text-gold-300">−{formatSoles(result.welcome)}</dd>
+              </>
+            )}
+          </dl>
+
+          <div className="flex flex-col gap-1 border-t border-white/15 pt-3">
+            <p className="flex items-baseline justify-between gap-3">
+              <span className="body-4 text-white">Primer año, todo incluido</span>
+              <span className="shrink-0 text-right">
+                <span className="number-md tabular-nums text-gold-300">{formatSoles(result.firstYearPerMonth)}</span>
+                <span className="body-6 text-ivory-200"> al mes</span>
+              </span>
+            </p>
+            <p className="caption-4 text-ivory-200">
+              Promedio con la implementación repartida en 12 meses: {formatSoles(result.firstYear)} en el año. La implementación se paga al inicio.
+            </p>
+          </div>
+        </div>
         {result.providerMonthly > 0 && (
           <p className="caption-4 text-ivory-200">Aparte: {formatSoles(result.providerMonthly)} al mes que pagas directamente a Nubefact.</p>
         )}

@@ -240,6 +240,10 @@ export interface Quote {
   /** Subscriptions paid in the first year: 12 months minus the welcome month, or the annual price. */
   subscriptions: number;
   firstYear: number;
+  /** The first year spread over twelve months, implementation included, rounded up. */
+  firstYearPerMonth: number;
+  /** The same monthly fee paid annually: the yearly price and its monthly equivalent. */
+  annual: { total: number; perMonth: number };
   /** Paid by the client to the invoicing provider; not part of the totals. */
   providerMonthly: number;
   /** The selection after the rules: staff needs Inventario + Eventos; the website alone takes no plan options. */
@@ -295,6 +299,8 @@ export function quote(selection: QuoteSelection, data: PricingData = PRICING): Q
     welcome,
     subscriptions,
     firstYear: oneTimeTotal + subscriptions,
+    firstYearPerMonth: Math.ceil((oneTimeTotal + subscriptions) / 12),
+    annual: { total: annualPrice(monthlyTotal, data), perMonth: annualEquivalent(monthlyTotal, data) },
     providerMonthly: applied.invoicing ? data.implementation.invoicing.providerMonthly : 0,
     applied,
   };
