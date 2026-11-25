@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens.
+ * Brand (official): petroleum #0D1E22 → #1D474B, gold #A4761A → #C6A35B, solid gold #BE9950.
+ * Proposal for this demo (not official brand values): ivory surfaces, ink text and pastel states.
+ * Contrast checked against WCAG AA (text ≥ 4.5:1, borders and focus ≥ 3:1).
+ */
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  --color-petroleum-950: #0d1e22;
+  --color-petroleum-900: #12292d;
+  --color-petroleum-800: #173539;
+  --color-petroleum-700: #1d474b;
+  --color-petroleum-300: #9fb7b5;
+
+  --color-gold-800: #7d5a12;
+  --color-gold-700: #a4761a;
+  --color-gold-500: #be9950;
+  --color-gold-300: #c6a35b;
+  --color-gold-100: #f3e9d2;
+
+  --color-ivory-50: #fbf8f2;
+  --color-ivory-100: #f6f1e7;
+  --color-ivory-200: #ede5d6;
+  --color-ivory-300: #ddd2bd;
+
+  --color-ink-900: #14272b;
+  --color-ink-700: #3d5054;
+  --color-ink-600: #4f6265;
+  --color-line-strong: #6f8381;
+
+  /* Stock states: sage = available, apricot = washing, blush = shortage, mist = out, sand = draft. */
+  --color-sage-100: #e1eedf;
+  --color-sage-800: #2e5b37;
+  --color-apricot-100: #fae6d2;
+  --color-apricot-800: #7a4416;
+  --color-blush-100: #f7dedc;
+  --color-blush-700: #9b3430;
+  --color-blush-800: #8a2e2b;
+  --color-mist-100: #dfe8f1;
+  --color-mist-800: #2c4d6e;
+  --color-sand-100: #f1e8d5;
+  --color-sand-800: #6b5017;
+
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-base: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  --tabbar-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --gradient-petroleum: linear-gradient(135deg, var(--color-petroleum-950) 0%, var(--color-petroleum-700) 100%);
+  --gradient-gold: linear-gradient(90deg, var(--color-gold-700) 0%, var(--color-gold-300) 100%);
+  color-scheme: light;
+}
+
+/* Named text styles (one family, sizes on the Tailwind scale). */
+@utility heading-1 { font-size: var(--text-6xl); line-height: var(--text-6xl--line-height); font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
+@utility heading-2 { font-size: var(--text-5xl); line-height: var(--text-5xl--line-height); font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
+@utility heading-3 { font-size: var(--text-4xl); line-height: var(--text-4xl--line-height); font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
+@utility heading-4 { font-size: var(--text-3xl); line-height: var(--text-3xl--line-height); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+@utility heading-5 { font-size: var(--text-2xl); line-height: var(--text-2xl--line-height); font-weight: 600; text-wrap: balance; }
+@utility heading-6 { font-size: var(--text-xl); line-height: var(--text-xl--line-height); font-weight: 600; text-wrap: balance; }
+@utility title-1 { font-size: var(--text-xl); line-height: var(--text-xl--line-height); font-weight: 500; }
+@utility title-2 { font-size: var(--text-lg); line-height: var(--text-lg--line-height); font-weight: 500; }
+@utility title-3 { font-size: var(--text-base); line-height: var(--text-base--line-height); font-weight: 600; }
+@utility title-4 { font-size: var(--text-sm); line-height: var(--text-sm--line-height); font-weight: 600; }
+@utility body-1 { font-size: var(--text-base); line-height: var(--text-base--line-height); font-weight: 600; text-wrap: pretty; }
+@utility body-2 { font-size: var(--text-base); line-height: var(--text-base--line-height); font-weight: 500; text-wrap: pretty; }
+@utility body-3 { font-size: var(--text-base); line-height: var(--text-base--line-height); font-weight: 400; text-wrap: pretty; }
+@utility body-4 { font-size: var(--text-sm); line-height: var(--text-sm--line-height); font-weight: 600; text-wrap: pretty; }
+@utility body-5 { font-size: var(--text-sm); line-height: var(--text-sm--line-height); font-weight: 500; text-wrap: pretty; }
+@utility body-6 { font-size: var(--text-sm); line-height: var(--text-sm--line-height); font-weight: 400; text-wrap: pretty; }
+@utility button-md { font-size: var(--text-base); line-height: var(--text-base--line-height); font-weight: 600; }
+@utility button-sm { font-size: var(--text-sm); line-height: var(--text-sm--line-height); font-weight: 600; }
+@utility caption-3 { font-size: var(--text-xs); line-height: var(--text-xs--line-height); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+@utility caption-4 { font-size: var(--text-xs); line-height: var(--text-xs--line-height); font-weight: 500; }
+@utility number-lg { font-size: var(--text-2xl); line-height: var(--text-2xl--line-height); font-weight: 600; font-variant-numeric: tabular-nums; }
+@utility number-md { font-size: var(--text-xl); line-height: var(--text-xl--line-height); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+@utility bg-petroleum-gradient { background: var(--gradient-petroleum); }
+@utility gold-text {
+  background: var(--gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+@utility pb-safe { padding-bottom: var(--safe-bottom); }
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-ivory-50);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 100dvh;
+    overflow-wrap: break-word;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  label {
+    touch-action: manipulation;
+  }
+  /* 16 px or larger in every field so iOS Safari never zooms in. */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold-700);
+    outline-offset: 2px;
+  }
+  .on-dark :focus-visible,
+  .on-dark:focus-visible {
+    outline-color: var(--color-gold-300);
+  }
+}
+
+/* Press feedback for anything pressable (transform only, interruptible). */
+.pressable {
+  transition:
+    transform 160ms var(--ease-out-strong),
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
+}
+.pressable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Bottom sheet: slides from the bottom on phones, centered dialog from tablet up. */
+.sheet-backdrop {
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+.sheet-backdrop[data-open="true"] {
+  opacity: 1;
+}
+/* Asymmetric timing: the sheet opens at drawer pace and closes faster, since closing is a response. */
+.sheet-panel {
+  transform: translateY(100%);
+  transition: transform 220ms var(--ease-drawer);
+}
+.sheet-panel[data-open="true"] {
+  transform: translateY(0);
+  transition-duration: 320ms;
+}
+@media (min-width: 768px) {
+  .sheet-panel {
+    transform: scale(0.96);
+    opacity: 0;
+    transition:
+      transform 160ms var(--ease-out-strong),
+      opacity 160ms var(--ease-out-strong);
+  }
+  .sheet-panel[data-open="true"] {
+    transform: scale(1);
+    opacity: 1;
+    transition-duration: 220ms;
+  }
+}
+
+/* Landing menu icon morphs between its two states. */
+.menu-line {
+  transition: transform 240ms var(--ease-out-strong);
+  transform-origin: center;
+}
+[aria-expanded="true"] > .menu-line-top {
+  transform: translateY(4px) rotate(45deg);
+}
+[aria-expanded="true"] > .menu-line-bottom {
+  transform: translateY(-4px) rotate(-45deg);
+}
+
+/* Hover lift only where a fine pointer exists; pressable elements keep their own transition. */
+@media (hover: hover) and (pointer: fine) {
+  .lift-on-hover:not(.pressable) {
+    transition: transform 200ms var(--ease-out-strong);
+  }
+  .lift-on-hover:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-panel,
+  .sheet-panel[data-open="true"] {
+    transform: none;
+    transition: opacity 200ms ease;
+  }
+  .sheet-panel {
+    opacity: 0;
+  }
+  .sheet-panel[data-open="true"] {
+    opacity: 1;
+  }
+  .pressable:active:not(:disabled),
+  .lift-on-hover:hover {
+    transform: none;
+  }
+  .menu-line {
+    transition: none;
+  }
+}
