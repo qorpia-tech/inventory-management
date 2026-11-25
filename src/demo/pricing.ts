@@ -29,7 +29,6 @@ export interface PricingData {
   annualFreeMonths: number;
   pilotDiscount: number;
   conditions: { title: string; text: string }[];
-  exampleFootnote: string;
   taxNote: string;
 }
 
@@ -115,7 +114,6 @@ export const PRICING: PricingData = {
     },
     { title: "Facturación", text: "funciona junto con tu sistema de facturación actual, o conéctalo con Nubefact." },
   ],
-  exampleFootnote: "Calculado con el precio «desde» de la implementación; el monto final depende del catálogo.",
   taxNote: "Precios en soles, IGV incluido, por empresa.",
 };
 
@@ -159,41 +157,124 @@ export function advanceFor(total: number, data: PricingData = PRICING): AdvanceS
   return { total, advance, balance: total - advance, isMinimum: advance > proportional };
 }
 
-export interface FirstYearRow {
-  label: string;
+export interface StartCost {
   implementation: number;
-  months: number;
-  monthly: number;
-  subscriptions: number;
+  firstMonth: number;
   total: number;
-  /** When true, the subscriptions column shows only the amount, without the multiplication. */
-  compact?: boolean;
 }
 
-/** «Ejemplo: Inventario + Eventos, primer año» */
-export function firstYearExample(data: PricingData = PRICING): FirstYearRow[] {
-  const plan = data.plans.find((p) => p.recommended) ?? data.plans[0]!;
-  const base = data.implementation.base.from;
-  const paidMonths = monthsPaidPerYear(data);
-  const pilot = pilotImplementation(data);
+/** Every plan starts with the one-time base implementation; the monthly fee runs from go-live. */
+export function startCost(plan: Plan, data: PricingData = PRICING): StartCost {
+  const implementation = data.implementation.base.from;
+  return { implementation, firstMonth: plan.monthly, total: implementation + plan.monthly };
+}
+
+export interface HiringStep {
+  title: string;
+  text: string;
+}
+
+/** «Cómo se contrata»: the order in which a plan is paid for. */
+export function hiringSteps(data: PricingData = PRICING): HiringStep[] {
+  const advance = advanceFor(data.implementation.base.from, data).advance;
   return [
-    { label: "Mensual", implementation: base, months: 12, monthly: plan.monthly, subscriptions: 12 * plan.monthly, total: base + 12 * plan.monthly },
     {
-      label: "Anual",
-      implementation: base,
-      months: paidMonths,
-      monthly: plan.monthly,
-      subscriptions: paidMonths * plan.monthly,
-      total: base + paidMonths * plan.monthly,
+      title: "Firma y anticipo",
+      text: `Al firmar pagas el anticipo: 30% de la implementación (desde ${formatSoles(advance)}).`,
     },
     {
-      label: "Anual, con descuento del piloto",
-      implementation: pilot,
-      months: paidMonths,
-      monthly: plan.monthly,
-      subscriptions: paidMonths * plan.monthly,
-      total: pilot + paidMonths * plan.monthly,
-      compact: true,
+      title: "Implementación",
+      text: "Cargamos tu catálogo, configuramos tus usuarios y capacitamos a tu equipo. El saldo se paga a la entrega.",
+    },
+    {
+      title: "Mensualidad",
+      text: "Desde la puesta en marcha pagas el plan elegido, al inicio de cada mes.",
     },
   ];
+}
+
+export type PlanChoice = "inventario" | "inventario-eventos" | "web";
+export type Billing = "monthly" | "annual";
+
+/** What the client picks in «Arma tu plan». */
+export interface QuoteSelection {
+  plan: PlanChoice;
+  staff: boolean;
+  /** Total user accounts; the plan includes some and the rest are charged per user. */
+  users: number;
+  invoicing: boolean;
+  website: boolean;
+  billing: Billing;
+  pilot: boolean;
+}
+
+export interface QuoteLine {
+  label: string;
+  amount: number;
+}
+
+export interface Quote {
+  oneTime: QuoteLine[];
+  oneTimeTotal: number;
+  advance: AdvanceSplit;
+  monthly: QuoteLine[];
+  monthlyTotal: number;
+  /** Subscriptions paid in the first year: 12 months, or the annual price. */
+  subscriptions: number;
+  firstYear: number;
+  /** Paid by the client to the invoicing provider; not part of the totals. */
+  providerMonthly: number;
+  /** The selection after the rules: staff needs Inventario + Eventos; the website alone takes no plan options. */
+  applied: { staff: boolean; invoicing: boolean; website: boolean; pilot: boolean; extraUsers: number };
+}
+
+/** Prices a selection with the public rules of part A. */
+export function quote(selection: QuoteSelection, data: PricingData = PRICING): Quote {
+  const plan = selection.plan === "web" ? undefined : data.plans.find((p) => p.id === selection.plan);
+  const applied = {
+    staff: plan?.id === "inventario-eventos" && selection.staff,
+    invoicing: Boolean(plan) && selection.invoicing,
+    website: !plan || selection.website,
+    pilot: Boolean(plan) && selection.pilot,
+    extraUsers: plan ? Math.max(0, Math.floor(selection.users) - plan.users) : 0,
+  };
+
+  const oneTime: QuoteLine[] = [];
+  const monthly: QuoteLine[] = [];
+  if (plan) {
+    oneTime.push(
+      applied.pilot
+        ? { label: "Implementación base, con descuento del piloto", amount: pilotImplementation(data) }
+        : { label: "Implementación base", amount: data.implementation.base.from },
+    );
+    if (applied.invoicing) oneTime.push({ label: "Facturación electrónica (Nubefact)", amount: data.implementation.invoicing.surcharge });
+    monthly.push({ label: `Plan ${plan.name}`, amount: plan.monthly });
+    if (applied.staff) monthly.push({ label: data.addons.staff.name, amount: data.addons.staff.monthly });
+    if (applied.extraUsers > 0) {
+      monthly.push({
+        label: `${applied.extraUsers} ${applied.extraUsers === 1 ? "usuario adicional" : "usuarios adicionales"}`,
+        amount: applied.extraUsers * data.addons.extraUser.monthlyPerUser,
+      });
+    }
+  }
+  if (applied.website) {
+    oneTime.push({ label: "Creación de la web comercial", amount: data.website.creation.from });
+    monthly.push({ label: "Hosting y mantenimiento de la web", amount: data.website.hosting.monthly });
+  }
+
+  const sum = (lines: QuoteLine[]) => lines.reduce((total, line) => total + line.amount, 0);
+  const oneTimeTotal = sum(oneTime);
+  const monthlyTotal = sum(monthly);
+  const subscriptions = selection.billing === "annual" ? annualPrice(monthlyTotal, data) : 12 * monthlyTotal;
+  return {
+    oneTime,
+    oneTimeTotal,
+    advance: advanceFor(oneTimeTotal, data),
+    monthly,
+    monthlyTotal,
+    subscriptions,
+    firstYear: oneTimeTotal + subscriptions,
+    providerMonthly: applied.invoicing ? data.implementation.invoicing.providerMonthly : 0,
+    applied,
+  };
 }

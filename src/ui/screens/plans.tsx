@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { CheckIcon, SealCheckIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import { advanceFor, firstYearExample, formatSoles, implementationWithInvoicing, PRICING } from "@/demo/pricing";
+import { advanceFor, formatSoles, hiringSteps, implementationWithInvoicing, PRICING, startCost } from "@/demo/pricing";
 import { Badge, Card, PageHeader, SectionTitle } from "../components/primitives";
+import { PlanCalculator } from "./plan-calculator";
 
 function Price({ amount, suffix, prefix }: { amount: number; suffix?: string; prefix?: string }) {
   return (
@@ -26,7 +27,6 @@ function Row({ title, price, children }: { title: string; price: ReactNode; chil
 /** Public price sheet (part A). Every amount and total comes from the pricing data file. */
 export function PlansScreen() {
   const { plans, addons, implementation, website, advance, conditions } = PRICING;
-  const example = firstYearExample();
   const advanceExamples = [
     { label: "Implementación base", split: advanceFor(implementation.base.from) },
     { label: "Solo web comercial", split: advanceFor(website.creation.from) },
@@ -35,6 +35,36 @@ export function PlansScreen() {
   return (
     <>
       <PageHeader title="Planes de QorStock" description={<strong className="font-semibold text-ink-900">{PRICING.taxNote}</strong>} />
+
+      <section aria-labelledby="how-to-hire">
+        <SectionTitle id="how-to-hire">Cómo se contrata</SectionTitle>
+        <Card>
+          <p className="body-6 text-ink-700">
+            Todo plan empieza con una implementación de pago único. Después pagas solo la mensualidad.
+          </p>
+          <ol className="mt-3 grid gap-3 md:grid-cols-3">
+            {hiringSteps().map((step, index) => (
+              <li key={step.title} className="flex items-start gap-3 rounded-xl bg-ivory-100 p-3">
+                <span
+                  aria-hidden
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-petroleum-950 body-5 text-gold-300"
+                >
+                  {index + 1}
+                </span>
+                <span className="flex flex-col gap-1">
+                  <span className="title-4 text-ink-900">{step.title}</span>
+                  <span className="body-6 text-ink-700">{step.text}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      </section>
+
+      <section aria-labelledby="calculator">
+        <SectionTitle id="calculator">Arma tu plan</SectionTitle>
+        <PlanCalculator />
+      </section>
 
       <section aria-labelledby="plans">
         <SectionTitle id="plans">Planes</SectionTitle>
@@ -62,25 +92,22 @@ export function PlansScreen() {
                 <CheckIcon size={16} weight="bold" className="text-sage-800" aria-hidden />
                 {plan.users} usuarios
               </p>
+              <div className="mt-auto flex flex-col gap-1 border-t border-ivory-300 pt-3">
+                <p className="body-6 text-ink-700">
+                  Para empezar: implementación desde {formatSoles(startCost(plan).implementation)}, pago único.
+                </p>
+                <p className="body-5 text-ink-900">
+                  Inicio: {formatSoles(startCost(plan).total)}{" "}
+                  <span className="body-6 text-ink-700">(implementación + primer mes)</span>
+                </p>
+              </div>
             </li>
           ))}
         </ul>
       </section>
 
-      <section aria-labelledby="addons">
-        <SectionTitle id="addons">Adicionales</SectionTitle>
-        <ul className="grid gap-3 md:grid-cols-2">
-          <Row title={addons.staff.name} price={<Price prefix="+" amount={addons.staff.monthly} suffix="al mes" />}>
-            {addons.staff.condition}
-          </Row>
-          <Row title={addons.extraUser.name} price={<Price prefix="+" amount={addons.extraUser.monthlyPerUser} suffix="al mes por usuario" />}>
-            {addons.extraUser.condition}
-          </Row>
-        </ul>
-      </section>
-
       <section aria-labelledby="implementation">
-        <SectionTitle id="implementation">Implementación (pago único)</SectionTitle>
+        <SectionTitle id="implementation">Implementación: pago único para empezar</SectionTitle>
         <ul className="grid gap-3 md:grid-cols-2">
           <Row title={implementation.base.name} price={<Price prefix="desde" amount={implementation.base.from} />}>
             {implementation.base.includes}
@@ -93,6 +120,18 @@ export function PlansScreen() {
               {implementation.invoicing.includes} ({formatSoles(implementation.invoicing.providerMonthly)} al mes, pagados a {implementation.invoicing.providerName}).
             </p>
           </Card>
+        </ul>
+      </section>
+
+      <section aria-labelledby="addons">
+        <SectionTitle id="addons">Adicionales</SectionTitle>
+        <ul className="grid gap-3 md:grid-cols-2">
+          <Row title={addons.staff.name} price={<Price prefix="+" amount={addons.staff.monthly} suffix="al mes" />}>
+            {addons.staff.condition}
+          </Row>
+          <Row title={addons.extraUser.name} price={<Price prefix="+" amount={addons.extraUser.monthlyPerUser} suffix="al mes por usuario" />}>
+            {addons.extraUser.condition}
+          </Row>
         </ul>
       </section>
 
@@ -163,52 +202,6 @@ export function PlansScreen() {
             ))}
           </ul>
         </Card>
-      </section>
-
-      <section aria-labelledby="example">
-        <SectionTitle id="example">Ejemplo: {plans.find((p) => p.recommended)?.name}, primer año</SectionTitle>
-        {/* Phones: stacked rows. */}
-        <ul className="flex flex-col gap-2 md:hidden">
-          {example.map((row) => (
-            <Card as="li" key={row.label} className="flex flex-col gap-2">
-              <p className="title-3 text-ink-900">{row.label}</p>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 body-6">
-                <dt className="text-ink-600">Implementación</dt>
-                <dd className="text-right tabular-nums text-ink-900">{formatSoles(row.implementation)}</dd>
-                <dt className="text-ink-600">Mensualidades</dt>
-                <dd className="text-right tabular-nums text-ink-900">
-                  {row.compact ? formatSoles(row.subscriptions) : `${row.months} × ${formatSoles(row.monthly)} = ${formatSoles(row.subscriptions)}`}
-                </dd>
-                <dt className="body-4 text-ink-900">Primer año</dt>
-                <dd className="text-right number-md text-ink-900">{formatSoles(row.total)}</dd>
-              </dl>
-            </Card>
-          ))}
-        </ul>
-        {/* Tablet and up: table. */}
-        <div className="hidden overflow-hidden rounded-2xl border border-ivory-300 bg-white md:block">
-          <table className="w-full text-left body-6">
-            <thead className="bg-ivory-100 text-ink-700">
-              <tr>
-                <th scope="col" className="p-3 font-semibold">Forma de pago</th>
-                <th scope="col" className="p-3 font-semibold">Implementación</th>
-                <th scope="col" className="p-3 font-semibold">Mensualidades</th>
-                <th scope="col" className="p-3 text-right font-semibold">Primer año</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ivory-300 tabular-nums">
-              {example.map((row) => (
-                <tr key={row.label}>
-                  <th scope="row" className="p-3 font-semibold text-ink-900">{row.label}</th>
-                  <td className="p-3">{formatSoles(row.implementation)}</td>
-                  <td className="p-3">{row.compact ? formatSoles(row.subscriptions) : `${row.months} × ${formatSoles(row.monthly)} = ${formatSoles(row.subscriptions)}`}</td>
-                  <td className="p-3 text-right body-4 text-ink-900">{formatSoles(row.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-2 caption-4 text-ink-600">{PRICING.exampleFootnote}</p>
       </section>
     </>
   );
