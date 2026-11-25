@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceFor,
+  annualEquivalent,
   annualPrice,
   formatSoles,
   hiringSteps,
@@ -46,15 +47,23 @@ describe("QorStock public pricing (part A)", () => {
     expect(advanceFor(950)).toEqual({ total: 950, advance: 500, balance: 450, isMinimum: true });
   });
 
-  it("states that every plan starts with the one-time implementation plus the first month", () => {
+  it("states that every plan starts with the one-time implementation plus the first payment", () => {
     expect(PRICING.plans.map((p) => startCost(p))).toEqual([
-      { implementation: 1800, firstMonth: 180, total: 1980 },
-      { implementation: 1800, firstMonth: 360, total: 2160 },
+      { implementation: 1800, firstPayment: 180, total: 1980 },
+      { implementation: 1800, firstPayment: 360, total: 2160 },
+    ]);
+    expect(PRICING.plans.map((p) => startCost(p, "annual"))).toEqual([
+      { implementation: 1800, firstPayment: 1800, total: 3600 },
+      { implementation: 1800, firstPayment: 3600, total: 5400 },
     ]);
   });
 
+  it("shows the annual price as its monthly equivalent", () => {
+    expect(PRICING.plans.map((p) => annualEquivalent(p.monthly))).toEqual([150, 300]);
+  });
+
   describe("quote calculator", () => {
-    const base = { plan: "inventario-eventos", staff: false, users: 5, invoicing: false, website: false, billing: "monthly", pilot: false } as const;
+    const base = { plan: "inventario-eventos", staff: false, users: 5, invoicing: false, website: false, billing: "monthly", pilot: false, newClient: false } as const;
 
     it("prices the recommended plan alone like the first-year example", () => {
       const q = quote(base);
@@ -81,8 +90,23 @@ describe("QorStock public pricing (part A)", () => {
     it("prices the website alone and ignores options that need a plan", () => {
       const q = quote({ ...base, plan: "web", staff: true, users: 9, invoicing: true, pilot: true });
       expect([q.oneTimeTotal, q.advance.advance, q.advance.balance, q.monthlyTotal, q.firstYear]).toEqual([950, 500, 450, 60, 1670]);
-      expect(q.applied).toEqual({ staff: false, invoicing: false, website: true, pilot: false, extraUsers: 0 });
+      expect(q.applied).toEqual({ staff: false, invoicing: false, website: true, pilot: false, extraUsers: 0, welcome: false });
       expect(q.providerMonthly).toBe(0);
+    });
+
+    it("gives a new client on the monthly plan month 4 free, once, on the whole monthly fee", () => {
+      const q = quote({ ...base, newClient: true });
+      expect([q.welcome, q.subscriptions, q.firstYear]).toEqual([360, 3960, 5760]);
+      expect(q.applied.welcome).toBe(true);
+      const full = quote({ ...base, newClient: true, staff: true, users: 7, invoicing: true, website: true, pilot: true });
+      expect([full.monthlyTotal, full.welcome, full.subscriptions, full.firstYear]).toEqual([560, 560, 6160, 10870]);
+    });
+
+    it("does not stack the welcome month with the annual discount or give it to the website alone", () => {
+      const annual = quote({ ...base, newClient: true, billing: "annual" });
+      expect([annual.welcome, annual.subscriptions, annual.firstYear, annual.applied.welcome]).toEqual([0, 3600, 5400, false]);
+      const webOnly = quote({ ...base, plan: "web", newClient: true });
+      expect([webOnly.welcome, webOnly.firstYear, webOnly.applied.welcome]).toEqual([0, 1670, false]);
     });
 
     it("does not add staff to the inventory-only plan", () => {

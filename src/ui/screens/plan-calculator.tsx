@@ -14,6 +14,7 @@ const INITIAL: QuoteSelection = {
   website: false,
   billing: "monthly",
   pilot: false,
+  newClient: true,
 };
 
 /** The whole row is the touch target; the native control stays for keyboards and screen readers. */
@@ -183,6 +184,21 @@ export function PlanCalculator() {
 
         {!webOnly && (
           <Option
+            title="Primera vez con QorStock"
+            price={`mes ${PRICING.welcomeFreeMonth} gratis`}
+            hint={
+              selection.billing === "annual"
+                ? "La bienvenida es para el pago mensual; el anual ya trae 2 meses gratis."
+                : `Pagas mes a mes: el mes ${PRICING.welcomeFreeMonth} no se cobra si estás al día con los tres primeros. Una sola vez por RUC.`
+            }
+            checked={result.applied.welcome}
+            disabled={selection.billing === "annual"}
+            onChange={(checked) => set("newClient", checked)}
+          />
+        )}
+
+        {!webOnly && (
+          <Option
             title="Cliente piloto"
             price="−30% en la implementación base"
             hint="No aplica al recargo de facturación."
@@ -206,6 +222,12 @@ export function PlanCalculator() {
           <dd className="body-4 tabular-nums">
             {selection.billing === "annual" ? `${formatSoles(result.subscriptions)} al año` : `${formatSoles(result.monthlyTotal)} al mes`}
           </dd>
+          {result.applied.welcome && (
+            <>
+              <dt className="body-6 text-ivory-200">Bienvenida: mes {PRICING.welcomeFreeMonth} gratis</dt>
+              <dd className="body-4 tabular-nums text-gold-300">−{formatSoles(result.welcome)}</dd>
+            </>
+          )}
           <dt className="border-t border-white/15 pt-2 body-4 text-white">Primer año</dt>
           <dd className="border-t border-white/15 pt-2 number-md tabular-nums text-gold-300">{formatSoles(result.firstYear)}</dd>
         </dl>

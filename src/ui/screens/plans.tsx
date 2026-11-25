@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { CheckIcon, SealCheckIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
-import { advanceFor, formatSoles, hiringSteps, implementationWithInvoicing, PRICING, startCost } from "@/demo/pricing";
-import { Badge, Card, PageHeader, SectionTitle } from "../components/primitives";
+import { CheckIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { advanceFor, formatSoles, hiringSteps, implementationWithInvoicing, PRICING } from "@/demo/pricing";
+import { Card, PageHeader, SectionTitle } from "../components/primitives";
 import { PlanCalculator } from "./plan-calculator";
+import { PlanCards } from "./plan-cards";
 
 function Price({ amount, suffix, prefix }: { amount: number; suffix?: string; prefix?: string }) {
   return (
@@ -26,7 +27,7 @@ function Row({ title, price, children }: { title: string; price: ReactNode; chil
 
 /** Public price sheet (part A). Every amount and total comes from the pricing data file. */
 export function PlansScreen() {
-  const { plans, addons, implementation, website, advance, conditions } = PRICING;
+  const { addons, implementation, website, advance, conditions } = PRICING;
   const advanceExamples = [
     { label: "Implementación base", split: advanceFor(implementation.base.from) },
     { label: "Solo web comercial", split: advanceFor(website.creation.from) },
@@ -68,42 +69,7 @@ export function PlansScreen() {
 
       <section aria-labelledby="plans">
         <SectionTitle id="plans">Planes</SectionTitle>
-        <ul className="grid gap-3 md:grid-cols-2">
-          {plans.map((plan) => (
-            <li
-              key={plan.id}
-              className={
-                plan.recommended
-                  ? "relative flex flex-col gap-3 rounded-2xl border-2 border-gold-500 bg-white p-4 shadow-sm"
-                  : "flex flex-col gap-3 rounded-2xl border border-ivory-300 bg-white p-4"
-              }
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="title-2 text-ink-900">{plan.name}</p>
-                {plan.recommended && (
-                  <Badge tone="gold" icon={<SealCheckIcon size={14} weight="fill" aria-hidden />}>
-                    Recomendado
-                  </Badge>
-                )}
-              </div>
-              <Price amount={plan.monthly} suffix="al mes" />
-              <p className="body-6 text-ink-700">{plan.includes}</p>
-              <p className="inline-flex items-center gap-2 body-4 text-ink-900">
-                <CheckIcon size={16} weight="bold" className="text-sage-800" aria-hidden />
-                {plan.users} usuarios
-              </p>
-              <div className="mt-auto flex flex-col gap-1 border-t border-ivory-300 pt-3">
-                <p className="body-6 text-ink-700">
-                  Para empezar: implementación desde {formatSoles(startCost(plan).implementation)}, pago único.
-                </p>
-                <p className="body-5 text-ink-900">
-                  Inicio: {formatSoles(startCost(plan).total)}{" "}
-                  <span className="body-6 text-ink-700">(implementación + primer mes)</span>
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <PlanCards />
       </section>
 
       <section aria-labelledby="implementation">

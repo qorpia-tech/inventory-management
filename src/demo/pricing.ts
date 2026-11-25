@@ -27,6 +27,8 @@ export interface PricingData {
   };
   advance: { rate: number; minimum: number; lead: string; covers: string[]; excludes: string[] };
   annualFreeMonths: number;
+  /** New clients on the monthly plan: this month of the monthly fee is free, once per RUC. */
+  welcomeFreeMonth: number;
   pilotDiscount: number;
   conditions: { title: string; text: string }[];
   taxNote: string;
@@ -104,13 +106,18 @@ export const PRICING: PricingData = {
     ],
   },
   annualFreeMonths: 2,
+  welcomeFreeMonth: 4,
   pilotDiscount: 0.3,
   conditions: [
-    { title: "Pago anual", text: "2 meses gratis en todas las mensualidades (planes, adicionales y mantenimiento de la web)." },
+    { title: "Pago anual", text: "se paga el año por adelantado, con 2 meses gratis en todas las mensualidades (planes, adicionales y mantenimiento de la web)." },
+    {
+      title: "Bienvenida",
+      text: "si es tu primera vez con QorStock y pagas mes a mes, el mes 4 va gratis si estás al día con los tres primeros. Una sola vez por RUC.",
+    },
     { title: "Piloto", text: "30% de descuento en la implementación base. No aplica al recargo de facturación." },
     {
       title: "Descuentos",
-      text: "el piloto se aplica a la implementación base y el pago anual a las mensualidades; no se suman otros descuentos.",
+      text: "el piloto se aplica a la implementación base. La bienvenida y el pago anual se aplican a las mensualidades y no se combinan: si pasas a anual antes del mes 4, la bienvenida no aplica.",
     },
     { title: "Facturación", text: "funciona junto con tu sistema de facturación actual, o conéctalo con Nubefact." },
   ],
@@ -133,6 +140,11 @@ export function monthsPaidPerYear(data: PricingData = PRICING): number {
 /** Yearly price paid in advance: the free months are discounted. */
 export function annualPrice(monthly: number, data: PricingData = PRICING): number {
   return monthly * monthsPaidPerYear(data);
+}
+
+/** The annual price spread over twelve months, IGV included. */
+export function annualEquivalent(monthly: number, data: PricingData = PRICING): number {
+  return Math.round(annualPrice(monthly, data) / 12);
 }
 
 export function implementationWithInvoicing(data: PricingData = PRICING): number {
@@ -159,14 +171,16 @@ export function advanceFor(total: number, data: PricingData = PRICING): AdvanceS
 
 export interface StartCost {
   implementation: number;
-  firstMonth: number;
+  /** The first month, or the first year when paying annually. */
+  firstPayment: number;
   total: number;
 }
 
-/** Every plan starts with the one-time base implementation; the monthly fee runs from go-live. */
-export function startCost(plan: Plan, data: PricingData = PRICING): StartCost {
+/** Every plan starts with the one-time base implementation; the fee runs from go-live. */
+export function startCost(plan: Plan, billing: Billing = "monthly", data: PricingData = PRICING): StartCost {
   const implementation = data.implementation.base.from;
-  return { implementation, firstMonth: plan.monthly, total: implementation + plan.monthly };
+  const firstPayment = billing === "annual" ? annualPrice(plan.monthly, data) : plan.monthly;
+  return { implementation, firstPayment, total: implementation + firstPayment };
 }
 
 export interface HiringStep {
@@ -188,7 +202,7 @@ export function hiringSteps(data: PricingData = PRICING): HiringStep[] {
     },
     {
       title: "Mensualidad",
-      text: "Desde la puesta en marcha pagas el plan elegido, al inicio de cada mes.",
+      text: "Desde la puesta en marcha pagas el plan elegido: mes a mes, o el año por adelantado con 2 meses gratis.",
     },
   ];
 }
@@ -206,6 +220,8 @@ export interface QuoteSelection {
   website: boolean;
   billing: Billing;
   pilot: boolean;
+  /** First time with QorStock: the monthly plan gets the welcome month. */
+  newClient: boolean;
 }
 
 export interface QuoteLine {
@@ -219,13 +235,15 @@ export interface Quote {
   advance: AdvanceSplit;
   monthly: QuoteLine[];
   monthlyTotal: number;
-  /** Subscriptions paid in the first year: 12 months, or the annual price. */
+  /** Monthly fee not charged in the welcome month (0 when it does not apply). */
+  welcome: number;
+  /** Subscriptions paid in the first year: 12 months minus the welcome month, or the annual price. */
   subscriptions: number;
   firstYear: number;
   /** Paid by the client to the invoicing provider; not part of the totals. */
   providerMonthly: number;
   /** The selection after the rules: staff needs Inventario + Eventos; the website alone takes no plan options. */
-  applied: { staff: boolean; invoicing: boolean; website: boolean; pilot: boolean; extraUsers: number };
+  applied: { staff: boolean; invoicing: boolean; website: boolean; pilot: boolean; extraUsers: number; welcome: boolean };
 }
 
 /** Prices a selection with the public rules of part A. */
@@ -237,6 +255,7 @@ export function quote(selection: QuoteSelection, data: PricingData = PRICING): Q
     website: !plan || selection.website,
     pilot: Boolean(plan) && selection.pilot,
     extraUsers: plan ? Math.max(0, Math.floor(selection.users) - plan.users) : 0,
+    welcome: Boolean(plan) && selection.newClient && selection.billing === "monthly",
   };
 
   const oneTime: QuoteLine[] = [];
@@ -265,13 +284,15 @@ export function quote(selection: QuoteSelection, data: PricingData = PRICING): Q
   const sum = (lines: QuoteLine[]) => lines.reduce((total, line) => total + line.amount, 0);
   const oneTimeTotal = sum(oneTime);
   const monthlyTotal = sum(monthly);
-  const subscriptions = selection.billing === "annual" ? annualPrice(monthlyTotal, data) : 12 * monthlyTotal;
+  const welcome = applied.welcome ? monthlyTotal : 0;
+  const subscriptions = selection.billing === "annual" ? annualPrice(monthlyTotal, data) : 12 * monthlyTotal - welcome;
   return {
     oneTime,
     oneTimeTotal,
     advance: advanceFor(oneTimeTotal, data),
     monthly,
     monthlyTotal,
+    welcome,
     subscriptions,
     firstYear: oneTimeTotal + subscriptions,
     providerMonthly: applied.invoicing ? data.implementation.invoicing.providerMonthly : 0,
